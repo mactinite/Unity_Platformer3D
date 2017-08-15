@@ -5,9 +5,9 @@ using UnityEngine;
 public class PlayerMotor : MonoBehaviour {
 
     public float moveSpeed = 10f;
-    public float jumpSpeed = 7f;
-    public float gravity = 30f;
-
+    public float maxJumpHeight = 5f;
+    public float minJumpHeight = 1f;
+    public float maxJumpTime = 0.5f;
     public float stoppingSpeed = 10f;
     public AnimationCurve stoppingCurve;
 
@@ -17,18 +17,19 @@ public class PlayerMotor : MonoBehaviour {
         
     private CharacterController characterController;
 
-    private float inputX = 0;
-    private float inputY = 0;
-    private bool grounded = false;
-    private CollisionFlags collision;
 
     public float maxVelocity = 10;
-    private Vector3 velocity = Vector3.zero;
-    private Vector3 move = Vector3.zero;
-    private bool isMoving = false;
 
-	// Use this for initialization
-	void Start () {
+    private bool grounded = false;
+    private Vector3 move = Vector3.zero;
+    float gravity;
+    float jumpVelocity;
+    float velocityJumpTermination;
+    private float inputX = 0;
+    private float inputY = 0;
+
+    // Use this for initialization
+    void Start () {
         characterController = GetComponent<CharacterController>();
 	}
 	
@@ -36,40 +37,47 @@ public class PlayerMotor : MonoBehaviour {
 	void Update () {
         inputX = Input.GetAxisRaw("Horizontal");
         inputY = Input.GetAxisRaw("Vertical");
-        if(Mathf.Abs(Input.GetAxisRaw("Vertical")) != 0 || Mathf.Abs(Input.GetAxisRaw("Horizontal")) !=0)
-        {
-            isMoving = true;
-        }
-        else
-        {
-            isMoving = false;
-        }
+
+        //Calculate our physics constants for this frame
+        gravity = (2 * maxJumpHeight) / Mathf.Pow(maxJumpTime, 2);
+        jumpVelocity = Mathf.Sqrt(2 * gravity * maxJumpHeight);
+
+        //Calculate the downward velocity needed to exit a jump early. 
+        velocityJumpTermination = Mathf.Sqrt(Mathf.Pow(jumpVelocity, 2) + (2 * -gravity) * (maxJumpHeight - minJumpHeight));
 
         // If both horizontal and vertical are used simultaneously, limit speed (if allowed), so the total doesn't exceed normal move speed
         float inputModifyFactor = (inputX != 0.0f && inputY != 0.0f) ? .7071f : 1.0f;
 
         if (!grounded)
         {
+
+            move.y -= gravity * Time.deltaTime;
+
             if (airControl)
             {
-                move.x = ((inputX * moveSpeed * inputModifyFactor) * airControlFactor) * Time.deltaTime;
-                move.z = ((inputY * moveSpeed * inputModifyFactor) * airControlFactor) * Time.deltaTime;
+                move.x = ((inputX * airControlFactor) * moveSpeed * inputModifyFactor);
+                move.z = ((inputY * airControlFactor) * moveSpeed * inputModifyFactor);
             }
-            move.y -= gravity * Time.deltaTime;
+            
+            if (Input.GetButtonUp("Jump") && move.y > 0)
+            {
+                //choose the minimum between the exit velocity and current upward velocity
+                move.y = Mathf.Min(velocityJumpTermination, move.y);
+            }
         }
         else
         {
-            move.x = (inputX * moveSpeed * inputModifyFactor) * Time.deltaTime;
-            move.z = (inputY * moveSpeed * inputModifyFactor) * Time.deltaTime;
-            move.y = -0.75f * Time.deltaTime;
+            move.x = (inputX * moveSpeed * inputModifyFactor);
+            move.z = (inputY * moveSpeed * inputModifyFactor);
+            move.y = -0.75f;
             if (Input.GetButtonDown("Jump"))
             {
-                move.y = jumpSpeed * Time.deltaTime;
+                move.y = jumpVelocity;
             }
             
         }
 
-        grounded = (characterController.Move(move) & CollisionFlags.Below) !=0;
+        grounded = (characterController.Move(move * Time.deltaTime) & CollisionFlags.Below) !=0;
 
     }
 
