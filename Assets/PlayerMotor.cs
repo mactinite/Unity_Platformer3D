@@ -21,6 +21,7 @@ public class PlayerMotor : MonoBehaviour {
     public float maxVelocity = 10;
 
     private bool grounded = false;
+    bool doubleJumped = false;
     private Vector3 move = Vector3.zero;
     float gravity;
     float jumpVelocity;
@@ -64,12 +65,19 @@ public class PlayerMotor : MonoBehaviour {
                 //choose the minimum between the exit velocity and current upward velocity
                 move.y = Mathf.Min(velocityJumpTermination, move.y);
             }
+            if (Input.GetButtonDown("Jump") && !doubleJumped)
+            {
+                move.y = jumpVelocity;
+                doubleJumped = true;
+            }
+
         }
         else
         {
             move.x = (inputX * moveSpeed * inputModifyFactor);
             move.z = (inputY * moveSpeed * inputModifyFactor);
             move.y = -0.75f;
+            doubleJumped = false;
             if (Input.GetButtonDown("Jump"))
             {
                 move.y = jumpVelocity;
